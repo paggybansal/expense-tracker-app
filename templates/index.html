@@ -27,13 +27,13 @@
         <tbody>
           % for e in expenses %>
           <tr>
-            <td>{{ e['id'] }}</td>
-            <td>{{ e['amount'] }}</td>
-            <td>{{ e['category'] }}</td>
-            <td>{{ e['description'] }}</td>
-            <td>{{ e['date'] }}</td>
+            <td>{{ e.id }}</td>
+            <td>{{ e.amount }}</td>
+            <td>{{ e.category }}</td>
+            <td>{{ e.description }}</td>
+            <td>{{ e.date }}</td>
             <td>
-              <form method="post" action="{{ url_for('delete', id=e['id']) }}" onsubmit="return confirm('Delete this expense?');">
+              <form method="post" action="{{ url_for('delete', id=e.id) }}" onsubmit="return confirm('Delete this expense?');">
                 <button type="submit" class="danger">Delete</button>
               </form>
             </td>
