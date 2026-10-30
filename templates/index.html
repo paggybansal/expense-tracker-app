@@ -1,0 +1,46 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Expense Tracker</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  </head>
+  <body>
+    <div class="container">
+      <h1>Expense Tracker</h1>
+      <p class="link-row">
+        <a href="{{ url_for('add_expense_form') }}">Add Expense</a>
+      </p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Amount</th>
+            <th>Category</th>
+            <th>Description</th>
+            <th>Date</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          % for e in expenses %>
+          <tr>
+            <td>{{ e['id'] }}</td>
+            <td>{{ e['amount'] }}</td>
+            <td>{{ e['category'] }}</td>
+            <td>{{ e['description'] }}</td>
+            <td>{{ e['date'] }}</td>
+            <td>
+              <form method="post" action="{{ url_for('delete', id=e['id']) }}" onsubmit="return confirm('Delete this expense?');">
+                <button type="submit" class="danger">Delete</button>
+              </form>
+            </td>
+          </tr>
+          % endfor %>
+        </tbody>
+      </table>
+    </div>
+  </body>
+</html>
