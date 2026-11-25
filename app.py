@@ -1,3 +1,4 @@
+import logging
 import os
 from datetime import date as _date
 
@@ -17,7 +18,18 @@ SORT_LABELS = [
     ("amount_asc", "Amount: Low to High"),
 ]
 # Monthly budget limit; configurable via MONTHLY_BUDGET env var (default 1000)
-MONTHLY_BUDGET = float(os.environ.get("MONTHLY_BUDGET", "1000"))
+DEFAULT_MONTHLY_BUDGET = 1000.0
+
+
+def _parse_budget(raw):
+    try:
+        return float(raw)
+    except (TypeError, ValueError):
+        logging.warning("Invalid MONTHLY_BUDGET %r; using %s", raw, DEFAULT_MONTHLY_BUDGET)
+        return DEFAULT_MONTHLY_BUDGET
+
+
+MONTHLY_BUDGET = _parse_budget(os.environ.get("MONTHLY_BUDGET", DEFAULT_MONTHLY_BUDGET))
 
 # Initialize DB (creates db/expenses.db on first run)
 init_db()
