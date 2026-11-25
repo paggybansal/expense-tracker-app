@@ -32,10 +32,26 @@ def init_db():
     conn.close()
 
 
-def get_all_expenses():
+SORT_OPTIONS = {
+    "date_desc": "date DESC, id DESC",
+    "date_asc": "date ASC, id ASC",
+    "amount_desc": "amount DESC",
+    "amount_asc": "amount ASC",
+}
+
+
+def get_all_expenses(category=None, sort=None):
+    order_by = SORT_OPTIONS.get(sort)  # whitelist only; never interpolate user input
+    query = "SELECT id, amount, category, description, date FROM expenses"
+    params = []
+    if category and category != "All":
+        query += " WHERE category = ?"
+        params.append(category)
+    if order_by:
+        query += " ORDER BY " + order_by
     conn = get_conn()
     cur = conn.cursor()
-    cur.execute("SELECT id, amount, category, description, date FROM expenses")
+    cur.execute(query, params)
     rows = cur.fetchall()
     conn.close()
     return rows
@@ -58,3 +74,16 @@ def delete_expense(expense_id):
     cur.execute("DELETE FROM expenses WHERE id = ?", (expense_id,))
     conn.commit()
     conn.close()
+
+
+def get_month_total(month_prefix):
+    """Sum of amounts for dates starting with month_prefix (YYYY-MM)."""
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE date LIKE ?",
+        (month_prefix + "-%",),
+    )
+    total = cur.fetchone()[0]
+    conn.close()
+    return total
