@@ -1,8 +1,35 @@
+import logging
+import os
+from datetime import date as _date
+
 from flask import Flask, render_template, request, redirect, url_for
 
-from models import init_db, get_all_expenses, add_expense, delete_expense
+from models import (
+    init_db, get_all_expenses, add_expense, delete_expense, get_month_total, SORT_OPTIONS,
+)
 
 app = Flask(__name__)
+
+CATEGORIES = ["Food", "Travel", "Utilities", "Entertainment"]
+SORT_LABELS = [
+    ("date_desc", "Date: Newest to Oldest"),
+    ("date_asc", "Date: Oldest to Newest"),
+    ("amount_desc", "Amount: High to Low"),
+    ("amount_asc", "Amount: Low to High"),
+]
+# Monthly budget limit; configurable via MONTHLY_BUDGET env var (default 1000)
+DEFAULT_MONTHLY_BUDGET = 1000.0
+
+
+def _parse_budget(raw):
+    try:
+        return float(raw)
+    except (TypeError, ValueError):
+        logging.warning("Invalid MONTHLY_BUDGET %r; using %s", raw, DEFAULT_MONTHLY_BUDGET)
+        return DEFAULT_MONTHLY_BUDGET
+
+
+MONTHLY_BUDGET = _parse_budget(os.environ.get("MONTHLY_BUDGET", DEFAULT_MONTHLY_BUDGET))
 
 # Initialize DB (creates db/expenses.db on first run)
 init_db()
@@ -10,8 +37,23 @@ init_db()
 
 @app.get("/")
 def index():
-    expenses = get_all_expenses()
-    return render_template("index.html", expenses=expenses)
+    category = request.args.get("category", "All")
+    if category != "All" and category not in CATEGORIES:
+        category = "All"
+    sort = request.args.get("sort", "date_desc")
+    if sort not in SORT_OPTIONS:
+        sort = "date_desc"
+    expenses = get_all_expenses(category, sort)
+    month_total = get_month_total(_date.today().strftime("%Y-%m"))
+    return render_template(
+        "index.html",
+        expenses=expenses,
+        categories=CATEGORIES,
+        sort_labels=SORT_LABELS,
+        selected_category=category,
+        selected_sort=sort,
+        budget_exceeded=month_total > MONTHLY_BUDGET,
+    )
 
 
 @app.get("/add")

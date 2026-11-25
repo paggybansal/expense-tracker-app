@@ -1,5 +1,6 @@
 import os
 import sqlite3
+from datetime import datetime
 
 
 DB_PATH = os.path.join("db", "expenses.db")
@@ -32,16 +33,47 @@ def init_db():
     conn.close()
 
 
-def get_all_expenses():
+SORT_OPTIONS = {
+    "date_desc": "date DESC, id DESC",
+    "date_asc": "date ASC, id ASC",
+    "amount_desc": "amount DESC, id DESC",
+    "amount_asc": "amount ASC, id ASC",
+}
+
+
+def get_all_expenses(category=None, sort=None):
+    order_by = SORT_OPTIONS.get(sort)  # whitelist only; never interpolate user input
+    query = "SELECT id, amount, category, description, date FROM expenses"
+    params = []
+    if category and category != "All":
+        query += " WHERE category = ?"
+        params.append(category)
+    if order_by:
+        query += " ORDER BY " + order_by
     conn = get_conn()
     cur = conn.cursor()
-    cur.execute("SELECT id, amount, category, description, date FROM expenses")
+    cur.execute(query, params)
     rows = cur.fetchall()
     conn.close()
     return rows
 
 
+DATE_FORMATS = ("%Y-%m-%d", "%Y/%m/%d", "%m/%d/%Y")
+
+
+def normalize_date(value):
+    """Return value as YYYY-MM-DD if it matches a supported format, else unchanged."""
+    text = (value or "").strip()
+    for fmt in DATE_FORMATS:
+        try:
+            return datetime.strptime(text, fmt).strftime("%Y-%m-%d")
+        except ValueError:
+            continue
+    return value
+
+
 def add_expense(amount, category, description, date):
+    date = normalize_date(date)
     conn = get_conn()
     cur = conn.cursor()
     cur.execute(
@@ -58,3 +90,21 @@ def delete_expense(expense_id):
     cur.execute("DELETE FROM expenses WHERE id = ?", (expense_id,))
     conn.commit()
     conn.close()
+
+
+def get_month_total(month_prefix):
+    """Sum of amounts whose date falls in month_prefix (YYYY-MM).
+
+    Dates in the supported formats are normalized first, so rows stored as
+    YYYY/MM/DD or MM/DD/YYYY are counted too.
+    """
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("SELECT amount, date FROM expenses")
+    rows = cur.fetchall()
+    conn.close()
+    return sum(
+        (row["amount"] or 0)
+        for row in rows
+        if str(normalize_date(row["date"])).startswith(month_prefix + "-")
+    )
