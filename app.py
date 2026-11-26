@@ -7,7 +7,7 @@ from datetime import date as _date
 from flask import Flask, render_template, request, redirect, url_for, Response
 
 from models import (
-    init_db, get_all_expenses, add_expense, delete_expense, get_month_total, get_month_summary, SORT_OPTIONS,
+    init_db, get_all_expenses, add_expense, delete_expense, get_month_summary, normalize_date, SORT_OPTIONS,
 )
 
 app = Flask(__name__)
@@ -50,7 +50,12 @@ def _filter_args():
 def _csv_safe(value):
     # Neutralize spreadsheet formula injection
     text = "" if value is None else str(value)
-    return "'" + text if text[:1] in ("=", "+", "-", "@") else text
+    return "'" + text if text[:1] in ("=", "+", "-", "@", "\t", "\r") else text
+
+
+def _csv_amount(value):
+    # Numeric amounts stay numeric; anything else is treated as text
+    return value if isinstance(value, (int, float)) else _csv_safe(value)
 
 
 @app.get("/export/csv")
@@ -63,7 +68,13 @@ def export_csv():
     writer = csv.writer(buf)
     writer.writerow(["ID", "Title", "Category", "Amount", "Date"])
     for e in expenses:
-        writer.writerow([e["id"], _csv_safe(e["description"]), _csv_safe(e["category"]), e["amount"], e["date"]])
+        writer.writerow([
+            e["id"],
+            _csv_safe(e["description"]),
+            _csv_safe(e["category"]),
+            _csv_amount(e["amount"]),
+            _csv_safe(normalize_date(e["date"])),
+        ])
     return Response(
         buf.getvalue(),
         mimetype="text/csv",
@@ -77,7 +88,6 @@ def index():
     expenses = get_all_expenses(category, sort)
     today = _date.today()
     month_spent, top_category, avg_daily = get_month_summary(today.strftime("%Y-%m"), today)
-    month_total = get_month_total(_date.today().strftime("%Y-%m"))
     return render_template(
         "index.html",
         expenses=expenses,
@@ -88,7 +98,7 @@ def index():
         month_spent=month_spent,
         top_category=top_category,
         avg_daily=avg_daily,
-        budget_exceeded=month_total > MONTHLY_BUDGET,
+        budget_exceeded=month_spent > MONTHLY_BUDGET,
     )
 
 

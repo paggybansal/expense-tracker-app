@@ -126,6 +126,7 @@ def get_month_summary(month_prefix, today):
         if str(normalize_date(row["date"])).startswith(month_prefix + "-"):
             amt = row["amount"] or 0
             total += amt
-            by_cat[row["category"]] = by_cat.get(row["category"], 0) + amt
+            cat = row["category"] or "Uncategorized"
+            by_cat[cat] = by_cat.get(cat, 0) + amt
     top = max(by_cat, key=lambda c: (by_cat[c], c)) if by_cat else None
     return total, top, total / max(today.day, 1)
