@@ -1,11 +1,13 @@
+import csv
+import io
 import logging
 import os
 from datetime import date as _date
 
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, Response
 
 from models import (
-    init_db, get_all_expenses, add_expense, delete_expense, get_month_total, SORT_OPTIONS,
+    init_db, get_all_expenses, add_expense, delete_expense, get_month_total, get_month_summary, SORT_OPTIONS,
 )
 
 app = Flask(__name__)
@@ -35,15 +37,46 @@ MONTHLY_BUDGET = _parse_budget(os.environ.get("MONTHLY_BUDGET", DEFAULT_MONTHLY_
 init_db()
 
 
-@app.get("/")
-def index():
+def _filter_args():
     category = request.args.get("category", "All")
     if category != "All" and category not in CATEGORIES:
         category = "All"
     sort = request.args.get("sort", "date_desc")
     if sort not in SORT_OPTIONS:
         sort = "date_desc"
+    return category, sort
+
+
+def _csv_safe(value):
+    # Neutralize spreadsheet formula injection
+    text = "" if value is None else str(value)
+    return "'" + text if text[:1] in ("=", "+", "-", "@") else text
+
+
+@app.get("/export/csv")
+def export_csv():
+    category, sort = _filter_args()
     expenses = get_all_expenses(category, sort)
+    if not expenses:
+        return Response("No expense records available for export.", status=404, mimetype="text/plain")
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(["ID", "Title", "Category", "Amount", "Date"])
+    for e in expenses:
+        writer.writerow([e["id"], _csv_safe(e["description"]), _csv_safe(e["category"]), e["amount"], e["date"]])
+    return Response(
+        buf.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment; filename=expenses.csv"},
+    )
+
+
+@app.get("/")
+def index():
+    category, sort = _filter_args()
+    expenses = get_all_expenses(category, sort)
+    today = _date.today()
+    month_spent, top_category, avg_daily = get_month_summary(today.strftime("%Y-%m"), today)
     month_total = get_month_total(_date.today().strftime("%Y-%m"))
     return render_template(
         "index.html",
@@ -52,6 +85,9 @@ def index():
         sort_labels=SORT_LABELS,
         selected_category=category,
         selected_sort=sort,
+        month_spent=month_spent,
+        top_category=top_category,
+        avg_daily=avg_daily,
         budget_exceeded=month_total > MONTHLY_BUDGET,
     )
 

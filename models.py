@@ -108,3 +108,24 @@ def get_month_total(month_prefix):
         for row in rows
         if str(normalize_date(row["date"])).startswith(month_prefix + "-")
     )
+
+
+def get_month_summary(month_prefix, today):
+    """Return (total, top_category, avg_daily) for month_prefix (YYYY-MM).
+
+    avg_daily = total / elapsed days of the month (today.day). top_category is None if no spend.
+    """
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("SELECT amount, category, date FROM expenses")
+    rows = cur.fetchall()
+    conn.close()
+    total = 0.0
+    by_cat = {}
+    for row in rows:
+        if str(normalize_date(row["date"])).startswith(month_prefix + "-"):
+            amt = row["amount"] or 0
+            total += amt
+            by_cat[row["category"]] = by_cat.get(row["category"], 0) + amt
+    top = max(by_cat, key=lambda c: (by_cat[c], c)) if by_cat else None
+    return total, top, total / max(today.day, 1)
