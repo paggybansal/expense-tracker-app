@@ -57,6 +57,12 @@ Unknown values fall back to `date_desc`. Filter and sort can be combined, e.g. `
 ### Empty state
 When a category filter returns no rows, the page shows "No expenses found for this category" with a "Clear Filters" link. It is not shown for an empty database under All.
 
+### Summary cards
+Three cards above the table show, for the current calendar month (server local date): Total Monthly Spent, Top Category ("N/A" when there is no spend; expenses with no category count as "Uncategorized") and Average Daily Spend (total divided by the day of the month). The cards cover all categories and ignore the active filter.
+
+### CSV export
+The "Export to CSV" link downloads `expenses.csv` (columns ID, Title, Category, Amount, Date) for the current filtered and sorted view, via `/export/csv?category=...&sort=...`. Title is the expense description and dates are normalized to YYYY-MM-DD. Text cells that begin with `=`, `+`, `-`, `@`, a tab or a carriage return are prefixed with `'` to prevent spreadsheet formula injection. When the current view has no rows, the link shows the alert "No expense records available for export." and does not download; a direct request to the URL returns 404 with the same message. PDF export is not implemented.
+
 ### Date handling
 Dates should be entered as `YYYY-MM-DD`. `YYYY/MM/DD` and `MM/DD/YYYY` are normalized to `YYYY-MM-DD` when an expense is added and when the month total is computed. Other formats are stored as-is and are not counted in the month total.
 

@@ -12,8 +12,16 @@
       <div class="budget-warning" role="alert">⚠️ Warning: Monthly Budget Exceeded!</div>
       {% endif %}
       <h1>Expense Tracker</h1>
+      <div class="summary-cards">
+        <div class="card"><div class="card-label">Total Monthly Spent</div><div class="card-value">{{ '%.2f'|format(month_spent) }}</div></div>
+        <div class="card"><div class="card-label">Top Category</div><div class="card-value">{{ top_category or 'N/A' }}</div></div>
+        <div class="card"><div class="card-label">Average Daily Spend</div><div class="card-value">{{ '%.2f'|format(avg_daily) }}</div></div>
+      </div>
       <p class="link-row">
         <a href="{{ url_for('add_expense_form') }}">Add Expense</a>
+        <a id="export-csv" href="{{ url_for('export_csv', category=selected_category, sort=selected_sort) }}"
+           data-count="{{ expenses|length }}"
+           onclick="if (this.dataset.count === '0') { alert('No expense records available for export.'); return false; }">Export to CSV</a>
       </p>
 
       <form method="get" action="{{ url_for('index') }}" class="filter-row">
